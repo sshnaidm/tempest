@@ -3,6 +3,10 @@
 # test clients use when authenticating with different user/tenant
 # combinations
 
+# The type of endpoint for a Identity service. Unless you have a
+# custom Keystone service catalog implementation, you probably want to leave
+# this value as "identity"
+catalog_type = %IDENTITY_CATALOG_TYPE%
 # Set to True if your test environment's Keystone authentication service should
 # be accessed over HTTPS
 use_ssl = %IDENTITY_USE_SSL%
@@ -58,6 +62,23 @@ build_interval = %BUILD_INTERVAL%
 # Number of seconds to time out on waiting for an instance or volume
 # to build or reach an expected status
 build_timeout = %BUILD_TIMEOUT%
+
+# Run additional tests that use SSH for instance validation?
+# This requires the instances be routable from the host
+#  executing the tests
+run_ssh = %RUN_SSH%
+
+# Name of a user used to authenticated to an instance
+ssh_user = %SSH_USER%
+
+# Network id used for SSH (public, private, etc)
+network_for_ssh = %SSH_NETWORK%
+
+# IP version of the address used for SSH
+ip_version_for_ssh = %SSH_IP_VERSION%
+
+# Number of seconds to wait to authenticate to an instance
+ssh_timeout = %SSH_TIMEOUT%
 
 # The type of endpoint for a Compute API service. Unless you have a
 # custom Keystone service catalog implementation, you probably want to leave
