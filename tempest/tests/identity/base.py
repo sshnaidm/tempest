@@ -106,7 +106,7 @@ class DataGenerator(object):
         def setup_test_user(self):
             """Set up a test user"""
             self.setup_test_tenant()
-            self.test_user = rand_name('test_user_')
+            self.test_user = rand_name('tempest_test_user_')
             self.test_password = rand_name('pass_')
             self.test_email = self.test_user + '@testmail.tm'
             resp, self.user = self.client.create_user(self.test_user,
@@ -117,7 +117,7 @@ class DataGenerator(object):
 
         def setup_test_tenant(self):
             """Set up a test tenant"""
-            self.test_tenant = rand_name('test_tenant_')
+            self.test_tenant = rand_name('tempest_test_tenant_')
             self.test_description = rand_name('desc_')
             resp, self.tenant = self.client.create_tenant(
                                                         name=self.test_tenant,

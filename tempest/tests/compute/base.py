@@ -88,7 +88,7 @@ class BaseComputeTest(unittest.TestCase):
         operate in an isolated tenant container.
         """
         admin_client = cls._get_identity_admin_client()
-        rand_name_root = cls.__name__
+        rand_name_root = cls.__name__ + '-tempest'
         if cls.isolated_creds:
             # Main user already created. Create the alt one...
             rand_name_root += '-alt'

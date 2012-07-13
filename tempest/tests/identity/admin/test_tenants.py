@@ -29,7 +29,7 @@ class TenantsTest(BaseIdentityAdminTest):
         super(TenantsTest, cls).setUpClass()
 
         for _ in xrange(5):
-            resp, tenant = cls.client.create_tenant(rand_name('tenant-'))
+            resp, tenant = cls.client.create_tenant(rand_name('tempest-tenant-'))
             cls.data.tenants.append(tenant)
 
     def test_list_tenants(self):
@@ -57,7 +57,7 @@ class TenantsTest(BaseIdentityAdminTest):
         """Create several tenants and delete them"""
         tenants = []
         for _ in xrange(5):
-            resp, body = self.client.create_tenant(rand_name('tenant-new'))
+            resp, body = self.client.create_tenant(rand_name('tempest-tenant-new'))
             tenants.append(body['id'])
 
         resp, body = self.client.list_tenants()
@@ -73,14 +73,14 @@ class TenantsTest(BaseIdentityAdminTest):
 
     def test_tenant_delete_by_unauthorized_user(self):
         """Non-admin user should not be able to delete a tenant"""
-        tenant_name = rand_name('tenant-')
+        tenant_name = rand_name('tempest-tenant-')
         resp, tenant = self.client.create_tenant(tenant_name)
         self.assertRaises(exceptions.Unauthorized,
                 self.non_admin_client.delete_tenant, tenant['id'])
 
     def test_tenant_delete_request_without_token(self):
         """Request to delete a tenant without a valid token should fail"""
-        tenant_name = rand_name('tenant-')
+        tenant_name = rand_name('tempest-tenant-')
         resp, tenant = self.client.create_tenant(tenant_name)
         token = self.client.get_auth()
         self.client.delete_token(token)
@@ -95,7 +95,7 @@ class TenantsTest(BaseIdentityAdminTest):
 
     def test_tenant_create_with_description(self):
         """Create tenant with a description"""
-        tenant_name = rand_name('tenant-')
+        tenant_name = rand_name('tempest-tenant-')
         tenant_desc = rand_name('desc-')
         resp, body = self.client.create_tenant(tenant_name,
                                                description=tenant_desc)
@@ -113,7 +113,7 @@ class TenantsTest(BaseIdentityAdminTest):
 
     def test_tenant_create_enabled(self):
         """Create a tenant that is enabled"""
-        tenant_name = rand_name('tenant-')
+        tenant_name = rand_name('tempest-tenant-')
         resp, body = self.client.create_tenant(tenant_name, enabled=True)
         tenant_id = body['id']
         st1 = resp['status']
@@ -127,7 +127,7 @@ class TenantsTest(BaseIdentityAdminTest):
 
     def test_tenant_create_not_enabled(self):
         """Create a tenant that is not enabled"""
-        tenant_name = rand_name('tenant-')
+        tenant_name = rand_name('tempest-tenant-')
         resp, body = self.client.create_tenant(tenant_name, enabled=False)
         tenant_id = body['id']
         st1 = resp['status']
@@ -141,7 +141,7 @@ class TenantsTest(BaseIdentityAdminTest):
 
     def test_tenant_create_duplicate(self):
         """Tenant names should be unique"""
-        tenant_name = rand_name('tenant-dup-')
+        tenant_name = rand_name('tempest-tenant-dup-')
         resp, body = self.client.create_tenant(tenant_name)
         tenant1_id = body.get('id')
 
@@ -156,13 +156,13 @@ class TenantsTest(BaseIdentityAdminTest):
 
     def test_create_tenant_by_unauthorized_user(self):
         """Non-admin user should not be authorized to create a tenant"""
-        tenant_name = rand_name('tenant-')
+        tenant_name = rand_name('tempest-tenant-')
         self.assertRaises(exceptions.Unauthorized,
                          self.non_admin_client.create_tenant, tenant_name)
 
     def test_create_tenant_request_without_token(self):
         """Create tenant request without a token should not be authorized"""
-        tenant_name = rand_name('tenant-')
+        tenant_name = rand_name('tempest-tenant-')
         token = self.client.get_auth()
         self.client.delete_token(token)
         self.assertRaises(exceptions.Unauthorized, self.client.create_tenant,
@@ -184,7 +184,7 @@ class TenantsTest(BaseIdentityAdminTest):
 
     def test_tenant_update_name(self):
         """Update name attribute of a tenant"""
-        t_name1 = rand_name('tenant-')
+        t_name1 = rand_name('tempest-tenant-')
         resp, body = self.client.create_tenant(t_name1)
         t_id = body['id']
         resp1_name = body['name']
@@ -207,7 +207,7 @@ class TenantsTest(BaseIdentityAdminTest):
 
     def test_tenant_update_desc(self):
         """Update description attribute of a tenant"""
-        t_name = rand_name('tenant-')
+        t_name = rand_name('tempest-tenant-')
         t_desc = rand_name('desc-')
         resp, body = self.client.create_tenant(t_name, description=t_desc)
         t_id = body['id']
@@ -231,7 +231,7 @@ class TenantsTest(BaseIdentityAdminTest):
 
     def test_tenant_update_enable(self):
         """Update the enabled attribute of a tenant"""
-        t_name = rand_name('tenant-')
+        t_name = rand_name('tempest-tenant-')
         t_en = False
         resp, body = self.client.create_tenant(t_name, enabled=t_en)
         t_id = body['id']

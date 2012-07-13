@@ -25,10 +25,10 @@ from tempest.tests.identity.base import BaseIdentityAdminTest
 
 class UsersTest(BaseIdentityAdminTest):
 
-    alt_user = rand_name('test_user_')
+    alt_user = rand_name('tempest_test_user_')
     alt_password = rand_name('pass_')
     alt_email = alt_user + '@testmail.tm'
-    alt_tenant = rand_name('test_tenant_')
+    alt_tenant = rand_name('tempest_test_tenant_')
     alt_description = rand_name('desc_')
 
     @attr(type='smoke')
