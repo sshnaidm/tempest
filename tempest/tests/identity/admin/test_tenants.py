@@ -77,6 +77,7 @@ class TenantsTest(BaseIdentityAdminTest):
         resp, tenant = self.client.create_tenant(tenant_name)
         self.assertRaises(exceptions.Unauthorized,
                 self.non_admin_client.delete_tenant, tenant['id'])
+        self.client.delete_tenant(tenant['id'])
 
     def test_tenant_delete_request_without_token(self):
         """Request to delete a tenant without a valid token should fail"""
@@ -87,6 +88,7 @@ class TenantsTest(BaseIdentityAdminTest):
         self.assertRaises(exceptions.Unauthorized, self.client.delete_tenant,
                          tenant['id'])
         self.client.clear_auth()
+        self.client.delete_tenant(tenant['id'])
 
     def test_delete_non_existent_tenant(self):
         """Attempt to delete a non existent tenant should fail"""

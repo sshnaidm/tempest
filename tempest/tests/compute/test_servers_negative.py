@@ -227,6 +227,7 @@ class ServersNegativeTest(BaseComputeTest):
         self.assertRaises(exceptions.NotFound,
                         self.alt_client.update_server, server['id'],
                         name=new_name)
+        self.client.delete_server(server['id'])
 
     @attr(type='negative')
     def test_update_server_name_length_exceeds_256(self):
@@ -236,6 +237,7 @@ class ServersNegativeTest(BaseComputeTest):
         new_name = 'a' * 256
         self.assertRaises(exceptions.BadRequest,
                         self.client.update_server, server['id'], name=new_name)
+        self.client.delete_server(server['id'])
 
     @attr(type='negative')
     def test_delete_non_existent_server(self):
