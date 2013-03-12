@@ -21,7 +21,7 @@ import unittest2 as unittest
 from tempest import exceptions
 from tempest.common.utils.data_utils import rand_name
 from tempest.tests.compute import base
-
+import nose
 
 class FloatingIPDetailsTestBase(object):
 
@@ -105,6 +105,7 @@ class FloatingIPDetailsTestJSON(base.BaseComputeTestJSON,
                                 FloatingIPDetailsTestBase):
     @classmethod
     def setUpClass(cls):
+        raise nose.SkipTest("Skip as use of nova-network expected")
         super(FloatingIPDetailsTestJSON, cls).setUpClass()
         FloatingIPDetailsTestBase.setUpClass(cls)
 
@@ -118,6 +119,7 @@ class FloatingIPDetailsTestXML(base.BaseComputeTestXML,
                                FloatingIPDetailsTestBase):
     @classmethod
     def setUpClass(cls):
+        raise nose.SkipTest("Skip as use of nova-network expected")
         super(FloatingIPDetailsTestXML, cls).setUpClass()
         FloatingIPDetailsTestBase.setUpClass(cls)
 

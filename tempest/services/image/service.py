@@ -21,7 +21,7 @@ service running in the test environment.
 """
 
 from tempest.services import Service as BaseService
-
+import re
 
 class Service(BaseService):
 
@@ -48,15 +48,28 @@ class Service(BaseService):
                     tenant_name=config.images.tenant_name,
                     auth_url=auth_url)
             token = keystone.auth_token
-            endpoint = keystone.service_catalog.url_for(
+            endpoint_with_version = keystone.service_catalog.url_for(
                     service_type='image',
                     endpoint_type='publicURL')
+            endpoint = self._strip_version(endpoint_with_version)
 
             self._client = glanceclient.Client('1',
                                                endpoint=endpoint,
                                                token=token)
         else:
             raise NotImplementedError
+
+    def _strip_version(self, endpoint):
+        """Strip a version from the last component of an endpoint if present"""
+
+        # Get rid of trailing '/' if present
+        if endpoint.endswith('/'):
+            endpoint = endpoint[:-1]
+        url_bits = endpoint.split('/')
+        # regex to match 'v1' or 'v2.0' etc
+        if re.match('v\d+\.?\d*', url_bits[-1]):
+            endpoint = '/'.join(url_bits[:-1])
+        return endpoint
 
     def get_client(self):
         """

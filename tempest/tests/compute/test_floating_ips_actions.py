@@ -22,7 +22,7 @@ from tempest import openstack
 from tempest import exceptions
 from tempest.common.utils.data_utils import rand_name
 from tempest.tests.compute import base
-
+import nose
 
 class FloatingIPsTestBase(object):
     server_id = None
@@ -225,6 +225,7 @@ class FloatingIPsTestBase(object):
 class FloatingIPsTestJSON(base.BaseComputeTestJSON, FloatingIPsTestBase):
     @classmethod
     def setUpClass(cls):
+        raise nose.SkipTest("Skip as use of nova-network expected")
         super(FloatingIPsTestJSON, cls).setUpClass()
         FloatingIPsTestBase.setUpClass(cls)
 
@@ -237,6 +238,7 @@ class FloatingIPsTestJSON(base.BaseComputeTestJSON, FloatingIPsTestBase):
 class FloatingIPsTestXML(base.BaseComputeTestXML, FloatingIPsTestBase):
     @classmethod
     def setUpClass(cls):
+        raise nose.SkipTest("Skip as use of nova-network expected")
         super(FloatingIPsTestXML, cls).setUpClass()
         FloatingIPsTestBase.setUpClass(cls)
 
