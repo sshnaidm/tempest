@@ -23,6 +23,7 @@ from tempest.tests.compute import base
 from tempest import whitebox
 import time
 
+
 @attr(type='whitebox')
 class ImagesWhiteboxTest(whitebox.ComputeWhiteboxTest, base.BaseComputeTest):
 

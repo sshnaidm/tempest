@@ -23,6 +23,7 @@ from tempest.common.utils.data_utils import rand_name
 from tempest.tests.compute import base
 import nose
 
+
 class FloatingIPDetailsTestBase(object):
 
     @staticmethod

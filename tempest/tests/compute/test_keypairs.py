@@ -24,6 +24,7 @@ from tempest.tests.compute.base import BaseComputeTestJSON
 from tempest.tests.compute.base import BaseComputeTestXML
 import time
 
+
 class KeyPairsTestBase(object):
 
     @attr(type='positive')

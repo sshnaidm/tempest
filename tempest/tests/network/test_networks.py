@@ -19,6 +19,11 @@ from nose.plugins.attrib import attr
 
 from tempest.common.utils.data_utils import rand_name
 from tempest.tests.network import base
+import unittest2 as unittest
+from tempest import config
+
+CONFIG = config.TempestConfig()
+QUANTUM_API_VERSION = CONFIG.network.api_version
 
 
 class NetworksTest(base.BaseNetworkTest):
@@ -34,7 +39,7 @@ class NetworksTest(base.BaseNetworkTest):
         """Creates and deletes a network for a tenant"""
         name = rand_name('network')
         resp, body = self.client.create_network(name)
-        self.assertEqual('202', resp['status'])
+        self.assertEqual('201', resp['status'])
         network = body['network']
         self.assertTrue(network['id'] is not None)
         resp, body = self.client.delete_network(network['id'])
@@ -50,6 +55,8 @@ class NetworksTest(base.BaseNetworkTest):
         self.assertEqual(self.name, network['name'])
 
     @attr(type='positive')
+    @unittest.skipIf((QUANTUM_API_VERSION == "v2.0"),
+                      "Test unsupported for quantum v2.0")
     def test_show_network_details(self):
         """Verifies the full details of a network"""
         resp, body = self.client.get_network_details(self.network['id'])
@@ -68,6 +75,8 @@ class NetworksTest(base.BaseNetworkTest):
         self.assertTrue(found)
 
     @attr(type='positive')
+    @unittest.skipIf((QUANTUM_API_VERSION == "v2.0"),
+                      "Test unsupported for quantum v2.0")
     def test_list_networks_with_detail(self):
         """Verify the network exists in the detailed list of all networks"""
         resp, body = self.client.list_networks_details()

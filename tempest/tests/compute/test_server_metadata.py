@@ -21,6 +21,7 @@ from tempest.common.utils.data_utils import rand_name
 from tempest.tests.compute.base import BaseComputeTest
 import time
 
+
 class ServerMetadataTest(BaseComputeTest):
 
     @classmethod

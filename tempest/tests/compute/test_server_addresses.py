@@ -21,6 +21,8 @@ from tempest import exceptions
 from tempest.common.utils.data_utils import rand_name
 from tempest.tests.compute.base import BaseComputeTest
 
+import unittest2 as unittest
+
 
 class ServerAddressesTest(BaseComputeTest):
 
@@ -65,6 +67,7 @@ class ServerAddressesTest(BaseComputeTest):
                       ' be allowed')
 
     @attr(type='smoke', category='server-addresses')
+    @unittest.skip("Until Bug 1092009 is fixed")
     def test_list_server_addresses(self):
         """All public and private addresses for
         a server should be returned"""
@@ -82,6 +85,7 @@ class ServerAddressesTest(BaseComputeTest):
                 self.assertTrue(address['version'])
 
     @attr(type='smoke', category='server-addresses')
+    @unittest.skip("Until Bug 1092009 is fixed")
     def test_list_server_addresses_by_network(self):
         """Providing a network type should filter
         the addresses return by that type"""

@@ -24,6 +24,7 @@ from tempest.common.utils.data_utils import rand_name
 from tempest.tests.compute import base
 import nose
 
+
 class FloatingIPsTestBase(object):
     server_id = None
     floating_ip = None

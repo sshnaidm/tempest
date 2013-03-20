@@ -22,6 +22,7 @@ from tempest.common.utils.data_utils import rand_name
 from tempest.tests.compute import base
 import time
 
+
 class SecurityGroupsTest(object):
 
     @staticmethod
