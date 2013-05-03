@@ -22,7 +22,7 @@ from tempest import exceptions
 from tempest.common.utils.data_utils import rand_name
 from tempest.tests.compute.base import BaseComputeTestJSON
 from tempest.tests.compute.base import BaseComputeTestXML
-import time
+
 
 
 class KeyPairsTestBase(object):
@@ -60,7 +60,6 @@ class KeyPairsTestBase(object):
         for keypair in key_list:
             resp, _ = self.client.delete_keypair(keypair['name'])
             self.assertEqual(202, resp.status)
-        time.sleep(10)
 
     @attr(type='positive')
     def test_keypair_create_delete(self):
@@ -77,7 +76,6 @@ class KeyPairsTestBase(object):
                         "Field private_key is empty or not found.")
         resp, _ = self.client.delete_keypair(k_name)
         self.assertEqual(202, resp.status)
-        time.sleep(10)
 
     @attr(type='positive')
     @unittest.skip("Skipped until the Bug #980688 is resolved")
@@ -102,7 +100,6 @@ class KeyPairsTestBase(object):
         finally:
             resp, _ = self.client.delete_keypair(k_name)
             self.assertEqual(202, resp.status)
-        time.sleep(10)
 
     @attr(type='positive')
     def test_keypair_create_with_pub_key(self):
@@ -127,7 +124,6 @@ class KeyPairsTestBase(object):
                          "to the requested name!")
         resp, _ = self.client.delete_keypair(k_name)
         self.assertEqual(202, resp.status)
-        time.sleep(10)
 
     @attr(type='negative')
     def test_keypair_create_with_invalid_pub_key(self):
@@ -140,7 +136,6 @@ class KeyPairsTestBase(object):
             pass
         else:
             self.fail('Expected BadRequest for invalid public key')
-        time.sleep(10)
 
     @attr(type='negative')
     def test_keypair_delete_nonexistant_key(self):
@@ -152,7 +147,6 @@ class KeyPairsTestBase(object):
             pass
         else:
             self.fail('nonexistent key')
-        time.sleep(10)
 
     @attr(type='negative')
     def test_create_keypair_with_empty_public_key(self):
@@ -165,7 +159,6 @@ class KeyPairsTestBase(object):
             pass
         else:
             self.fail('Expected BadRequest for empty public key')
-        time.sleep(10)
 
     @attr(type='negative')
     def test_create_keypair_when_public_key_bits_exceeds_maximum(self):
@@ -178,7 +171,6 @@ class KeyPairsTestBase(object):
             pass
         else:
             self.fail('Expected BadRequest for too long public key')
-        time.sleep(10)
 
     @attr(type='negative')
     def test_create_keypair_with_duplicate_name(self):
@@ -196,7 +188,6 @@ class KeyPairsTestBase(object):
             self.fail('duplicate name')
         resp, _ = self.client.delete_keypair(k_name)
         self.assertEqual(202, resp.status)
-        time.sleep(10)
 
     @attr(type='negative')
     def test_create_keypair_with_empty_name_string(self):
@@ -207,7 +198,6 @@ class KeyPairsTestBase(object):
             pass
         else:
             self.fail('empty string')
-        time.sleep(10)
 
     @attr(type='negative')
     def test_create_keypair_with_long_keynames(self):
@@ -219,7 +209,6 @@ class KeyPairsTestBase(object):
             pass
         else:
             self.fail('too long')
-        time.sleep(10)
 
     @attr(type='negative')
     def test_create_keypair_invalid_name(self):
@@ -231,7 +220,6 @@ class KeyPairsTestBase(object):
             pass
         else:
             self.fail('invalid name')
-        time.sleep(10)
 
 
 class KeyPairsTestXML(BaseComputeTestXML, KeyPairsTestBase):

@@ -21,7 +21,7 @@ from tempest.common.utils.data_utils import rand_name
 from tempest import exceptions
 from tempest.tests.compute import base
 from tempest import whitebox
-import time
+
 
 
 @attr(type='whitebox')
@@ -79,7 +79,6 @@ class ImagesWhiteboxTest(whitebox.ComputeWhiteboxTest, base.BaseComputeTest):
                       "task_state=%s" % (vm_state, task_state))
         finally:
             self.update_state(self.shared_server['id'], 'active', None)
-        time.sleep(10)
 
     def test_create_image_when_vm_eq_building_task_eq_scheduling(self):
         """409 error when instance states are building,scheduling"""

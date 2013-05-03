@@ -20,7 +20,7 @@ from nose.plugins.attrib import attr
 from tempest.common.utils.data_utils import rand_name
 from tempest import exceptions
 from tempest.tests.compute.base import BaseComputeTest
-import time
+
 
 
 class ImagesMetadataTest(BaseComputeTest):
@@ -54,7 +54,6 @@ class ImagesMetadataTest(BaseComputeTest):
         super(ImagesMetadataTest, cls).tearDownClass()
 
     def setUp(self):
-        time.sleep(10)
         meta = {'key1': 'value1', 'key2': 'value2'}
         resp, _ = self.client.set_image_metadata(self.image_id, meta)
         self.assertEqual(resp.status, 200)

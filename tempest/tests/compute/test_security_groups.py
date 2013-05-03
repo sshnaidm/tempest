@@ -20,7 +20,7 @@ from nose.plugins.attrib import attr
 from tempest import exceptions
 from tempest.common.utils.data_utils import rand_name
 from tempest.tests.compute import base
-import time
+
 
 
 class SecurityGroupsTest(object):
@@ -59,7 +59,6 @@ class SecurityGroupsTest(object):
                 resp, _ =\
                 self.client.delete_security_group(securitygroup['id'])
                 self.assertEqual(202, resp.status)
-        time.sleep(10)
 
     @attr(type='positive')
     def test_security_group_create_delete(self):
@@ -82,7 +81,6 @@ class SecurityGroupsTest(object):
             #Delete Security Group created in this method
             resp, _ = self.client.delete_security_group(securitygroup['id'])
             self.assertEqual(202, resp.status)
-        time.sleep(10)
 
     @attr(type='positive')
     def test_security_group_create_get_delete(self):
@@ -104,7 +102,6 @@ class SecurityGroupsTest(object):
             #Delete the Security Group created in this method
             resp, _ = self.client.delete_security_group(securitygroup['id'])
             self.assertEqual(202, resp.status)
-        time.sleep(10)
 
     @attr(type='negative')
     def test_security_group_get_nonexistant_group(self):
@@ -129,7 +126,6 @@ class SecurityGroupsTest(object):
         else:
             self.fail('Should not be able to GET the details from a '
                       'nonexistant Security Group')
-        time.sleep(10)
 
     @attr(type='negative')
     def test_security_group_create_with_invalid_group_name(self):
@@ -163,7 +159,6 @@ class SecurityGroupsTest(object):
         else:
             self.fail('Security Group should not be created '
                       'with more than 255 chars in Name')
-        time.sleep(10)
 
     @attr(type='negative')
     def test_security_group_create_with_invalid_group_description(self):
@@ -197,7 +192,6 @@ class SecurityGroupsTest(object):
         else:
             self.fail('Security Group should not be created '
                       'with more than 255 chars in Description')
-        time.sleep(10)
 
     @attr(type='negative')
     def test_security_group_create_with_duplicate_name(self):
@@ -224,7 +218,6 @@ class SecurityGroupsTest(object):
             #Delete the Security Group created in this method
             resp, _ = self.client.delete_security_group(security_group['id'])
             self.assertEqual(202, resp.status)
-        time.sleep(10)
 
     @attr(type='negative')
     def test_delete_nonexistant_security_group(self):
@@ -247,7 +240,6 @@ class SecurityGroupsTest(object):
         else:
             self.fail('Should not be able to delete a nonexistant '
                       'Security Group')
-        time.sleep(10)
 
     @attr(type='negative')
     def test_delete_security_group_without_passing_id(self):
@@ -262,7 +254,6 @@ class SecurityGroupsTest(object):
         else:
             self.fail('Should not be able to delete a Security Group'
                       'with out passing ID')
-        time.sleep(10)
 
     def test_server_security_groups(self):
         """
@@ -320,7 +311,6 @@ class SecurityGroupsTest(object):
 
         self.client.delete_security_group(sg2_id)
         self.assertEqual(202, resp.status)
-        time.sleep(10)
 
 
 class SecurityGroupsTestJSON(base.BaseComputeTestJSON,

@@ -20,14 +20,13 @@ from nose.plugins.attrib import attr
 from tempest import exceptions
 from tempest.common.utils.data_utils import rand_name
 from tempest.tests.compute import base
-import time
+
 
 
 class SecurityGroupRulesTest(object):
 
     @staticmethod
     def setUpClass(cls):
-        time.sleep(10)
         cls.client = cls.security_groups_client
 
     @attr(type='positive')
@@ -59,7 +58,6 @@ class SecurityGroupRulesTest(object):
             self.client.delete_security_group_rule(group_rule_id)
             #Deleting the Security Group created in this method
             resp, _ = self.client.delete_security_group(securitygroup_id)
-        time.sleep(10)
 
     @attr(type='positive')
     def test_security_group_rules_create_with_optional_arguments(self):
@@ -102,7 +100,6 @@ class SecurityGroupRulesTest(object):
             #Deleting the Security Groups created in this method
             resp, _ = self.client.delete_security_group(securitygroup_id1)
             resp, _ = self.client.delete_security_group(securitygroup_id2)
-        time.sleep(10)
 
     @attr(type='positive')
     def test_security_group_rules_create_delete(self):
@@ -132,7 +129,6 @@ class SecurityGroupRulesTest(object):
             self.client.delete_security_group_rule(group_rule_id)
             #Deleting the Security Group created in this method
             resp, _ = self.client.delete_security_group(securitygroup_id)
-        time.sleep(10)
 
     @attr(type='negative')
     def test_security_group_rules_create_with_invalid_id(self):
@@ -155,7 +151,6 @@ class SecurityGroupRulesTest(object):
         else:
             self.fail('Security Group rule should not be created '
                       'with invalid parent group id')
-        time.sleep(10)
 
     @attr(type='negative')
     def test_security_group_rules_create_with_invalid_ip_protocol(self):
@@ -185,7 +180,6 @@ class SecurityGroupRulesTest(object):
                       'with invalid ip_protocol')
         #Deleting the Security Group created in this method
         resp, _ = self.client.delete_security_group(securitygroup['id'])
-        time.sleep(10)
 
     @attr(type='negative')
     def test_security_group_rules_create_with_invalid_from_port(self):
@@ -215,7 +209,6 @@ class SecurityGroupRulesTest(object):
                       'with invalid from_port')
         #Deleting the Security Group created in this method
         resp, _ = self.client.delete_security_group(securitygroup['id'])
-        time.sleep(10)
 
     @attr(type='negative')
     def test_security_group_rules_create_with_invalid_to_port(self):
@@ -245,7 +238,6 @@ class SecurityGroupRulesTest(object):
                       'with invalid from_port')
         #Deleting the Security Group created in this method
         resp, _ = self.client.delete_security_group(securitygroup['id'])
-        time.sleep(10)
 
     @attr(type='negative')
     def test_security_group_rules_delete_with_invalid_id(self):
@@ -260,7 +252,6 @@ class SecurityGroupRulesTest(object):
         else:
             self.fail('Security Group Rule should not be deleted '
                       'with nonexistant rule id')
-        time.sleep(10)
 
 
 class SecurityGroupRulesTestJSON(base.BaseComputeTestJSON,
