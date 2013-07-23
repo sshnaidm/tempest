@@ -390,8 +390,11 @@ class TestNetworkBasicOps(smoke.DefaultClientSmokeTest):
         self.set_resource(rand_name('floatingip-'), floating_ip)
         return floating_ip
 
-    def _ping_ip_address(self, ip_address):
-        cmd = ['ping', '-c1', '-w1', ip_address]
+    def _ping_ip_address(self, ip_address, netns='', namespace=False):
+        if namespace:
+            cmd = ['ip', 'netns', 'exec', netns, 'ping', '-c1', '-w1', ip_address]
+        else:
+            cmd = ['ping', '-c1', '-w1', ip_address]
 
         def ping():
             proc = subprocess.Popen(cmd,
@@ -472,10 +475,13 @@ class TestNetworkBasicOps(smoke.DefaultClientSmokeTest):
             raise self.skipTest(msg)
         if not self.servers:
             raise self.skipTest("No VM's have been created")
+        router = self._get_router(self.tenant_id)
+        netns = "qrouter-" + router.id
+        namespace = True
         for server in self.servers:
             for net_name, ip_addresses in server.networks.iteritems():
                 for ip_address in ip_addresses:
-                    self.assertTrue(self._ping_ip_address(ip_address),
+                    self.assertTrue(self._ping_ip_address(ip_address, netns, namespace),
                                     "Timed out waiting for %s's ip to become "
                                     "reachable" % server.name)
 

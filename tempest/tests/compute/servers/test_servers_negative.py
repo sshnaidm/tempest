@@ -236,7 +236,7 @@ class ServersNegativeTest(base.BaseComputeTest):
         # Create a server with a nonexistent security group
 
         security_groups = [{'name': 'does_not_exist'}]
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(exceptions.NotFound,
                           self.create_server,
                           security_groups=security_groups)
 
