@@ -15,10 +15,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import testtools
+
 from tempest.common.utils.data_utils import rand_name
 from tempest import exceptions
 from tempest.test import attr
 from tempest.tests.compute import base
+from tempest import config
 
 
 class SecurityGroupsTestJSON(base.BaseComputeTest):
@@ -154,6 +157,8 @@ class SecurityGroupsTestJSON(base.BaseComputeTest):
                           self.client.create_security_group, s_name,
                           s_description)
 
+    @testtools.skipIf(config.TempestConfig().network.quantum_available,
+                      "Quantum allows duplicate names for security groups")
     @attr(type='negative')
     def test_security_group_create_with_duplicate_name(self):
         # Negative test:Security Group with duplicate name should not

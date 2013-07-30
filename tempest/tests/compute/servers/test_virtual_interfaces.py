@@ -16,16 +16,20 @@
 #    under the License.
 
 import netaddr
+import testtools
 
 from tempest.common.utils.data_utils import rand_name
 from tempest import exceptions
 from tempest.test import attr
 from tempest.tests.compute import base
+from tempest import config
 
 
 @attr(type='smoke')
 class VirtualInterfacesTestJSON(base.BaseComputeTest):
     _interface = 'json'
+    
+    CONF = config.TempestConfig()
 
     @classmethod
     def setUpClass(cls):
@@ -34,6 +38,8 @@ class VirtualInterfacesTestJSON(base.BaseComputeTest):
         resp, server = cls.create_server(wait_until='ACTIVE')
         cls.server_id = server['id']
 
+    @testtools.skipIf(CONF.network.quantum_available, "This feature is not " +
+                      "implemented by Quantum. See bug: #1183436")
     @attr(type='positive')
     def test_list_virtual_interfaces(self):
         # Positive test:Should be able to GET the virtual interfaces list

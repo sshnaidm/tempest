@@ -18,7 +18,7 @@
 from tempest.common.utils.data_utils import rand_name
 from tempest.test import attr
 from tempest.tests.object_storage import base
-
+import testtools
 
 class ContainerTest(base.BaseObjectTest):
 
@@ -52,6 +52,7 @@ class ContainerTest(base.BaseObjectTest):
         header_value = resp.get('x-versions-location', 'Missing Header')
         self.assertEqual(header_value, versioned)
 
+    @testtools.skip("Skip as Object Versioning is not enabled out of the box")
     @attr(type='smoke')
     def test_versioned_container(self):
         # Versioned container responses tests
