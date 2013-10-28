@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from tempest import clients
 from tempest.tests.compute import base
 
 import time
@@ -23,10 +24,11 @@ class AttachInterfacesTestJSON(base.BaseComputeTest):
 
     @classmethod
     def setUpClass(cls):
-        if not cls.config.network.quantum_available:
-            raise cls.skipException("Quantum is required")
         super(AttachInterfacesTestJSON, cls).setUpClass()
-        cls.client = cls.os.interfaces_client
+        os = clients.Manager(interface=cls._interface)
+        if not os.config.network.quantum_available:
+            raise cls.skipException("Quantum is required")
+        cls.client = os.interfaces_client
 
     def _check_interface(self, iface, port_id=None, network_id=None,
                          fixed_ip=None):
@@ -42,10 +44,15 @@ class AttachInterfacesTestJSON(base.BaseComputeTest):
         resp, server = self.create_server()
         self.os.servers_client.wait_for_server_status(server['id'], 'ACTIVE')
         resp, ifs = self.client.list_interfaces(server['id'])
+        resp, body = self.client.wait_for_interface_status(
+            server['id'], ifs[0]['port_id'], 'ACTIVE')
+        ifs[0]['port_state'] = body['port_state']
         return server, ifs
 
     def _test_create_interface(self, server):
         resp, iface = self.client.create_interface(server['id'])
+        resp, iface = self.client.wait_for_interface_status(
+            server['id'], iface['port_id'], 'ACTIVE')
         self._check_interface(iface)
         return iface
 
@@ -53,6 +60,8 @@ class AttachInterfacesTestJSON(base.BaseComputeTest):
         network_id = ifs[0]['net_id']
         resp, iface = self.client.create_interface(server['id'],
                                                    network_id=network_id)
+        resp, iface = self.client.wait_for_interface_status(
+            server['id'], iface['port_id'], 'ACTIVE')
         self._check_interface(iface, network_id=network_id)
         return iface
 

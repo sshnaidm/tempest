@@ -22,6 +22,7 @@ import netaddr
 
 from quantumclient.common import exceptions as exc
 
+from tempest.common import ssh
 from tempest.common.utils.data_utils import rand_name
 from tempest import smoke
 from tempest import test
@@ -111,9 +112,14 @@ class TestNetworkBasicOps(smoke.DefaultClientSmokeTest):
 
      * For a freshly-booted VM with an IP address ("port") on a given network:
 
-       - the Tempest host can ping the IP address.  This implies that
-         the VM has been assigned the correct IP address and has
+       - the Tempest host can ping the IP address.  This implies, but
+         does not guarantee (see the ssh check that follows), that the
+         VM has been assigned the correct IP address and has
          connectivity to the Tempest host.
+
+       - the Tempest host can perform key-based authentication to an
+         ssh server hosted at the IP address.  This check guarantees
+         that the IP address is associated with the target VM.
 
        #TODO(mnewby) - Need to implement the following:
        - the Tempest host can ssh into the VM via the IP address and
@@ -167,18 +173,22 @@ class TestNetworkBasicOps(smoke.DefaultClientSmokeTest):
     def check_preconditions(cls):
         cfg = cls.config.network
         msg = None
-        if not (cfg.tenant_networks_reachable or cfg.public_network_id):
-            msg = ('Either tenant_networks_reachable must be "true", or '
-                   'public_network_id must be defined.')
-        else:
+        if cfg.quantum_available:
+            cls.enabled = True
             try:
                 cls.network_client.list_networks()
             except exc.QuantumClientException:
+                cls.enabled = False
                 msg = 'Unable to connect to Quantum service.'
-
-        cls.enabled = not bool(msg)
-        if msg:
-            raise cls.skipException(msg)
+                raise cls.skipException(msg)
+            if not (cfg.tenant_networks_reachable or cfg.public_network_id):
+                cls.enabled = False
+                msg = ('Either tenant_networks_reachable must be "true", or '
+                       'public_network_id must be defined.')
+                raise cls.skipException(msg)
+        else:
+            cls.enabled = False
+            raise cls.skipException("Quantum support is required")
 
     @classmethod
     def setUpClass(cls):
@@ -220,7 +230,10 @@ class TestNetworkBasicOps(smoke.DefaultClientSmokeTest):
         except AttributeError:
             self.fail("SecurityGroup object not successfully created.")
 
-        # Add rules to the security group
+        # These rules are intended to permit inbound ssh and icmp
+        # traffic from all sources, so no group_id is provided.
+        # Setting a group_id would only permit traffic from ports
+        # belonging to the same security group.
         rulesets = [
             {
                 # ssh
@@ -228,7 +241,6 @@ class TestNetworkBasicOps(smoke.DefaultClientSmokeTest):
                 'from_port': 22,
                 'to_port': 22,
                 'cidr': '0.0.0.0/0',
-                'group_id': secgroup.id
             },
             {
                 # ping
@@ -236,7 +248,6 @@ class TestNetworkBasicOps(smoke.DefaultClientSmokeTest):
                 'from_port': -1,
                 'to_port': -1,
                 'cidr': '0.0.0.0/0',
-                'group_id': secgroup.id
             }
         ]
         for ruleset in rulesets:
@@ -390,11 +401,8 @@ class TestNetworkBasicOps(smoke.DefaultClientSmokeTest):
         self.set_resource(rand_name('floatingip-'), floating_ip)
         return floating_ip
 
-    def _ping_ip_address(self, ip_address, netns='', namespace=False):
-        if namespace:
-            cmd = ['ip', 'netns', 'exec', netns, 'ping', '-c1', '-w1', ip_address]
-        else:
-            cmd = ['ping', '-c1', '-w1', ip_address]
+    def _ping_ip_address(self, ip_address):
+        cmd = ['ping', '-c1', '-w1', ip_address]
 
         def ping():
             proc = subprocess.Popen(cmd,
@@ -406,6 +414,25 @@ class TestNetworkBasicOps(smoke.DefaultClientSmokeTest):
 
         # TODO(mnewby) Allow configuration of execution and sleep duration.
         return test.call_until_true(ping, 20, 1)
+
+    def _is_reachable_via_ssh(self, ip_address, username, private_key,
+                              timeout=120):
+        ssh_client = ssh.Client(ip_address, username,
+                                pkey=private_key,
+                                timeout=timeout)
+        return ssh_client.test_connection_auth()
+
+    def _check_vm_connectivity(self, ip_address, username, private_key,
+                               timeout=120):
+        self.assertTrue(self._ping_ip_address(ip_address),
+                        "Timed out waiting for %s to become "
+                        "reachable" % ip_address)
+        self.assertTrue(self._is_reachable_via_ssh(ip_address,
+                                                   username,
+                                                   private_key,
+                                                   timeout=timeout),
+                        'Auth failure in connecting to %s@%s via ssh' %
+                        (username, ip_address))
 
     def test_001_create_keypairs(self):
         self.keypairs[self.tenant_id] = self._create_keypair(
@@ -475,15 +502,15 @@ class TestNetworkBasicOps(smoke.DefaultClientSmokeTest):
             raise self.skipTest(msg)
         if not self.servers:
             raise self.skipTest("No VM's have been created")
-        router = self._get_router(self.tenant_id)
-        netns = "qrouter-" + router.id
-        namespace = True
+        # The target login is assumed to have been configured for
+        # key-based authentication by cloud-init.
+        ssh_login = self.config.compute.image_ssh_user
+        private_key = self.keypairs[self.tenant_id].private_key
         for server in self.servers:
             for net_name, ip_addresses in server.networks.iteritems():
                 for ip_address in ip_addresses:
-                    self.assertTrue(self._ping_ip_address(ip_address, netns, namespace),
-                                    "Timed out waiting for %s's ip to become "
-                                    "reachable" % server.name)
+                    self._check_vm_connectivity(ip_address, ssh_login,
+                                                private_key)
 
     def test_007_assign_floating_ips(self):
         public_network_id = self.config.network.public_network_id
@@ -499,9 +526,11 @@ class TestNetworkBasicOps(smoke.DefaultClientSmokeTest):
     def test_008_check_public_network_connectivity(self):
         if not self.floating_ips:
             raise self.skipTest('No floating ips have been allocated.')
+        # The target login is assumed to have been configured for
+        # key-based authentication by cloud-init.
+        ssh_login = self.config.compute.image_ssh_user
+        private_key = self.keypairs[self.tenant_id].private_key
         for server, floating_ips in self.floating_ips.iteritems():
             for floating_ip in floating_ips:
                 ip_address = floating_ip.floating_ip_address
-                self.assertTrue(self._ping_ip_address(ip_address),
-                                "Timed out waiting for %s's ip to become "
-                                "reachable" % server.name)
+                self._check_vm_connectivity(ip_address, ssh_login, private_key)
