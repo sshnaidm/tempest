@@ -22,6 +22,7 @@ from tempest import config
 from tempest import exceptions
 from tempest.test import attr
 from tempest.tests.compute import base
+from tempest import config
 
 
 class SecurityGroupsTestJSON(base.BaseComputeTest):
