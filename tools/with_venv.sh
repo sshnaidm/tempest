@@ -1,4 +1,8 @@
 #!/bin/bash
 TOOLS=`dirname $0`
-VENV=$TOOLS/../.venv
+if [ -n "$venv" ]; then
+    VENV=$venv
+else
+    VENV=$TOOLS/../.venv
+fi
 source $VENV/bin/activate && "$@"
