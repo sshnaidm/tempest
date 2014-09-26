@@ -16,13 +16,10 @@
 
 import logging
 import os
-import re
 import subprocess
-import time
 
 from cinderclient import exceptions as cinder_exceptions
 import glanceclient
-from heatclient import exc as heat_exceptions
 import netaddr
 from neutronclient.common import exceptions as exc
 from novaclient import exceptions as nova_exceptions
@@ -38,7 +35,6 @@ from tempest.common.utils.linux import remote_client
 from tempest import config
 from tempest import exceptions
 from tempest.openstack.common import log
-from tempest.openstack.common import timeutils
 from tempest.services.network import resources as net_resources
 import tempest.test
 
@@ -77,6 +73,7 @@ class ScenarioTest(tempest.test.BaseTestCase):
         )
         cls.admin_manager = clients.Manager(cls.admin_credentials())
         # Clients (in alphabetical order)
+        cls.flavors_client = cls.manager.flavors_client
         cls.floating_ips_client = cls.manager.floating_ips_client
         # Glance image client v1
         cls.image_client = cls.manager.image_client
@@ -92,13 +89,8 @@ class ScenarioTest(tempest.test.BaseTestCase):
         cls.interface_client = cls.manager.interfaces_client
         # Neutron network client
         cls.network_client = cls.manager.network_client
-
-    @classmethod
-    def tearDownClass(cls):
-        # Isolated creds also manages network resources, which should
-        # be cleaned up at the end of the test case
-        cls.isolated_creds.clear_isolated_creds()
-        super(ScenarioTest, cls).tearDownClass()
+        # Heat client
+        cls.orchestration_client = cls.manager.orchestration_client
 
     @classmethod
     def _get_credentials(cls, get_creds, ctype):
@@ -155,7 +147,7 @@ class ScenarioTest(tempest.test.BaseTestCase):
     def addCleanup_with_wait(self, waiter_callable, thing_id, thing_id_param,
                              cleanup_callable, cleanup_args=None,
                              cleanup_kwargs=None, ignore_error=True):
-        """Adds wait for ansyc resource deletion at the end of cleanups
+        """Adds wait for async resource deletion at the end of cleanups
 
         @param waiter_callable: callable to wait for the resource to delete
         @param thing_id: the id of the resource to be cleaned-up
@@ -221,26 +213,6 @@ class ScenarioTest(tempest.test.BaseTestCase):
             flavor = CONF.compute.flavor_ref
         if create_kwargs is None:
             create_kwargs = {}
-
-        fixed_network_name = CONF.compute.fixed_network_name
-        if 'nics' not in create_kwargs and fixed_network_name:
-            _, networks = self.networks_client.list_networks()
-            # If several networks found, set the NetID on which to connect the
-            # server to avoid the following error "Multiple possible networks
-            # found, use a Network ID to be more specific."
-            # See Tempest #1250866
-            if len(networks) > 1:
-                for network in networks:
-                    if network['label'] == fixed_network_name:
-                        create_kwargs['nics'] = [{'net-id': network['id']}]
-                        break
-                # If we didn't find the network we were looking for :
-                else:
-                    msg = ("The network on which the NIC of the server must "
-                           "be connected can not be found : "
-                           "fixed_network_name=%s. Starting instance without "
-                           "specifying a network.") % fixed_network_name
-                    LOG.info(msg)
 
         LOG.debug("Creating a server (name: %s, image: %s, flavor: %s)",
                   name, image, flavor)
@@ -350,8 +322,9 @@ class ScenarioTest(tempest.test.BaseTestCase):
         if isinstance(server_or_ip, six.string_types):
             ip = server_or_ip
         else:
-            network_name_for_ssh = CONF.compute.network_for_ssh
-            ip = server_or_ip.networks[network_name_for_ssh][0]
+            addr = server_or_ip['addresses'][CONF.compute.network_for_ssh][0]
+            ip = addr['addr']
+
         if username is None:
             username = CONF.scenario.ssh_user
         if private_key is None:
@@ -467,6 +440,35 @@ class ScenarioTest(tempest.test.BaseTestCase):
 
         _, volume = self.volumes_client.get_volume(self.volume['id'])
         self.assertEqual('available', volume['status'])
+
+    def rebuild_server(self, server_id, image=None,
+                       preserve_ephemeral=False, wait=True,
+                       rebuild_kwargs=None):
+        if image is None:
+            image = CONF.compute.image_ref
+
+        rebuild_kwargs = rebuild_kwargs or {}
+
+        LOG.debug("Rebuilding server (id: %s, image: %s, preserve eph: %s)",
+                  server_id, image, preserve_ephemeral)
+        self.servers_client.rebuild(server_id=server_id, image_ref=image,
+                                    preserve_ephemeral=preserve_ephemeral,
+                                    **rebuild_kwargs)
+        if wait:
+            self.servers_client.wait_for_server_status(server_id, 'ACTIVE')
+
+    def ping_ip_address(self, ip_address, should_succeed=True):
+        cmd = ['ping', '-c1', '-w1', ip_address]
+
+        def ping():
+            proc = subprocess.Popen(cmd,
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE)
+            proc.communicate()
+            return (proc.returncode == 0) == should_succeed
+
+        return tempest.test.call_until_true(
+            ping, CONF.compute.ping_timeout, 1)
 
 
 # TODO(yfried): change this class name to NetworkScenarioTest once client
@@ -646,19 +648,6 @@ class NeutronScenarioTest(ScenarioTest):
         self.assertIsNone(floating_ip.port_id)
         return floating_ip
 
-    def _ping_ip_address(self, ip_address, should_succeed=True):
-        cmd = ['ping', '-c1', '-w1', ip_address]
-
-        def ping():
-            proc = subprocess.Popen(cmd,
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE)
-            proc.wait()
-            return (proc.returncode == 0) == should_succeed
-
-        return tempest.test.call_until_true(
-            ping, CONF.compute.ping_timeout, 1)
-
     def _check_vm_connectivity(self, ip_address,
                                username=None,
                                private_key=None,
@@ -678,8 +667,8 @@ class NeutronScenarioTest(ScenarioTest):
             msg = "Timed out waiting for %s to become reachable" % ip_address
         else:
             msg = "ip address %s is reachable" % ip_address
-        self.assertTrue(self._ping_ip_address(ip_address,
-                                              should_succeed=should_connect),
+        self.assertTrue(self.ping_ip_address(ip_address,
+                                             should_succeed=should_connect),
                         msg=msg)
         if should_connect:
             # no need to check ssh for negative connectivity
@@ -907,6 +896,41 @@ class NeutronScenarioTest(ScenarioTest):
 
         return rules
 
+    def _create_pool(self, lb_method, protocol, subnet_id):
+        """Wrapper utility that returns a test pool."""
+        client = self.network_client
+        name = data_utils.rand_name('pool')
+        _, resp_pool = client.create_pool(protocol=protocol, name=name,
+                                          subnet_id=subnet_id,
+                                          lb_method=lb_method)
+        pool = net_resources.DeletablePool(client=client, **resp_pool['pool'])
+        self.assertEqual(pool['name'], name)
+        self.addCleanup(self.delete_wrapper, pool.delete)
+        return pool
+
+    def _create_member(self, address, protocol_port, pool_id):
+        """Wrapper utility that returns a test member."""
+        client = self.network_client
+        _, resp_member = client.create_member(protocol_port=protocol_port,
+                                              pool_id=pool_id,
+                                              address=address)
+        member = net_resources.DeletableMember(client=client,
+                                               **resp_member['member'])
+        self.addCleanup(self.delete_wrapper, member.delete)
+        return member
+
+    def _create_vip(self, protocol, protocol_port, subnet_id, pool_id):
+        """Wrapper utility that returns a test vip."""
+        client = self.network_client
+        name = data_utils.rand_name('vip')
+        _, resp_vip = client.create_vip(protocol=protocol, name=name,
+                                        subnet_id=subnet_id, pool_id=pool_id,
+                                        protocol_port=protocol_port)
+        vip = net_resources.DeletableVip(client=client, **resp_vip['vip'])
+        self.assertEqual(vip['name'], name)
+        self.addCleanup(self.delete_wrapper, vip.delete)
+        return vip
+
     def _ssh_to_server(self, server, private_key):
         ssh_login = CONF.compute.image_ssh_user
         return self.get_remote_client(server,
@@ -1013,11 +1037,6 @@ class OfficialClientTest(tempest.test.BaseTestCase):
         cls.orchestration_client = cls.manager.orchestration_client
         cls.data_processing_client = cls.manager.data_processing_client
         cls.ceilometer_client = cls.manager.ceilometer_client
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.isolated_creds.clear_isolated_creds()
-        super(OfficialClientTest, cls).tearDownClass()
 
     @classmethod
     def _get_credentials(cls, get_creds, ctype):
@@ -1515,7 +1534,7 @@ class BaremetalProvisionStates(object):
     ERROR = 'error'
 
 
-class BaremetalScenarioTest(OfficialClientTest):
+class BaremetalScenarioTest(ScenarioTest):
     @classmethod
     def setUpClass(cls):
         super(BaremetalScenarioTest, cls).setUpClass()
@@ -1526,12 +1545,13 @@ class BaremetalScenarioTest(OfficialClientTest):
             raise cls.skipException(msg)
 
         # use an admin client manager for baremetal client
-        admin_creds = cls.admin_credentials()
-        manager = clients.OfficialClientManager(credentials=admin_creds)
+        manager = clients.Manager(
+            credentials=cls.admin_credentials()
+        )
         cls.baremetal_client = manager.baremetal_client
 
         # allow any issues obtaining the node list to raise early
-        cls.baremetal_client.node.list()
+        cls.baremetal_client.list_nodes()
 
     def _node_state_timeout(self, node_id, state_attr,
                             target_states, timeout=10, interval=1):
@@ -1540,7 +1560,7 @@ class BaremetalScenarioTest(OfficialClientTest):
 
         def check_state():
             node = self.get_node(node_id=node_id)
-            if getattr(node, state_attr) in target_states:
+            if node.get(state_attr) in target_states:
                 return True
             return False
 
@@ -1580,14 +1600,20 @@ class BaremetalScenarioTest(OfficialClientTest):
 
     def get_node(self, node_id=None, instance_id=None):
         if node_id:
-            return self.baremetal_client.node.get(node_id)
+            _, body = self.baremetal_client.show_node(node_id)
+            return body
         elif instance_id:
-            return self.baremetal_client.node.get_by_instance_uuid(instance_id)
+            _, body = self.baremetal_client.show_node_by_instance_uuid(
+                instance_id)
+            if body['nodes']:
+                return body['nodes'][0]
 
-    def get_ports(self, node_id):
+    def get_ports(self, node_uuid):
         ports = []
-        for port in self.baremetal_client.node.list_ports(node_id):
-            ports.append(self.baremetal_client.port.get(port.uuid))
+        _, body = self.baremetal_client.list_node_ports(node_uuid)
+        for port in body['ports']:
+            _, p = self.baremetal_client.show_port(port['uuid'])
+            ports.append(p)
         return ports
 
     def add_keypair(self):
@@ -1602,42 +1628,37 @@ class BaremetalScenarioTest(OfficialClientTest):
 
     def boot_instance(self):
         create_kwargs = {
-            'key_name': self.keypair.id
+            'key_name': self.keypair['name']
         }
         self.instance = self.create_server(
             wait_on_boot=False, create_kwargs=create_kwargs)
 
-        self.addCleanup_with_wait(self.compute_client.servers,
-                                  self.instance.id,
-                                  cleanup_callable=self.delete_wrapper,
-                                  cleanup_args=[self.instance])
+        self.wait_node(self.instance['id'])
+        self.node = self.get_node(instance_id=self.instance['id'])
 
-        self.wait_node(self.instance.id)
-        self.node = self.get_node(instance_id=self.instance.id)
-
-        self.wait_power_state(self.node.uuid, BaremetalPowerStates.POWER_ON)
+        self.wait_power_state(self.node['uuid'], BaremetalPowerStates.POWER_ON)
 
         self.wait_provisioning_state(
-            self.node.uuid,
+            self.node['uuid'],
             [BaremetalProvisionStates.DEPLOYWAIT,
              BaremetalProvisionStates.ACTIVE],
             timeout=15)
 
-        self.wait_provisioning_state(self.node.uuid,
+        self.wait_provisioning_state(self.node['uuid'],
                                      BaremetalProvisionStates.ACTIVE,
                                      timeout=CONF.baremetal.active_timeout)
 
-        self.status_timeout(
-            self.compute_client.servers, self.instance.id, 'ACTIVE')
-
-        self.node = self.get_node(instance_id=self.instance.id)
-        self.instance = self.compute_client.servers.get(self.instance.id)
+        self.servers_client.wait_for_server_status(self.instance['id'],
+                                                   'ACTIVE')
+        self.node = self.get_node(instance_id=self.instance['id'])
+        _, self.instance = self.servers_client.get_server(self.instance['id'])
 
     def terminate_instance(self):
-        self.instance.delete()
-        self.wait_power_state(self.node.uuid, BaremetalPowerStates.POWER_OFF)
+        self.servers_client.delete_server(self.instance['id'])
+        self.wait_power_state(self.node['uuid'],
+                              BaremetalPowerStates.POWER_OFF)
         self.wait_provisioning_state(
-            self.node.uuid,
+            self.node['uuid'],
             BaremetalProvisionStates.NOSTATE,
             timeout=CONF.baremetal.unprovision_timeout)
 
@@ -1859,19 +1880,6 @@ class NetworkScenarioTest(OfficialClientTest):
         self.assertIsNone(floating_ip.port_id)
         return floating_ip
 
-    def _ping_ip_address(self, ip_address, should_succeed=True):
-        cmd = ['ping', '-c1', '-w1', ip_address]
-
-        def ping():
-            proc = subprocess.Popen(cmd,
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE)
-            proc.wait()
-            return (proc.returncode == 0) == should_succeed
-
-        return tempest.test.call_until_true(
-            ping, CONF.compute.ping_timeout, 1)
-
     def _create_pool(self, lb_method, protocol, subnet_id):
         """Wrapper utility that returns a test pool."""
         name = data_utils.rand_name('pool-')
@@ -1943,8 +1951,8 @@ class NetworkScenarioTest(OfficialClientTest):
             msg = "Timed out waiting for %s to become reachable" % ip_address
         else:
             msg = "ip address %s is reachable" % ip_address
-        self.assertTrue(self._ping_ip_address(ip_address,
-                                              should_succeed=should_connect),
+        self.assertTrue(self.ping_ip_address(ip_address,
+                                             should_succeed=should_connect),
                         msg=msg)
         if should_connect:
             # no need to check ssh for negative connectivity
@@ -2253,7 +2261,7 @@ class NetworkScenarioTest(OfficialClientTest):
         return network, subnet, router
 
 
-class OrchestrationScenarioTest(OfficialClientTest):
+class OrchestrationScenarioTest(ScenarioTest):
     """
     Base class for orchestration scenario tests
     """
@@ -2283,105 +2291,16 @@ class OrchestrationScenarioTest(OfficialClientTest):
 
     @classmethod
     def _get_default_network(cls):
-        networks = cls.network_client.list_networks()
-        for net in networks['networks']:
-            if net['name'] == CONF.compute.fixed_network_name:
+        _, networks = cls.networks_client.list_networks()
+        for net in networks:
+            if net['label'] == CONF.compute.fixed_network_name:
                 return net
 
     @staticmethod
     def _stack_output(stack, output_key):
         """Return a stack output value for a given key."""
-        return next((o['output_value'] for o in stack.outputs
+        return next((o['output_value'] for o in stack['outputs']
                     if o['output_key'] == output_key), None)
-
-    def _ping_ip_address(self, ip_address, should_succeed=True):
-        cmd = ['ping', '-c1', '-w1', ip_address]
-
-        def ping():
-            proc = subprocess.Popen(cmd,
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE)
-            proc.wait()
-            return (proc.returncode == 0) == should_succeed
-
-        return tempest.test.call_until_true(
-            ping, CONF.orchestration.build_timeout, 1)
-
-    def _wait_for_resource_status(self, stack_identifier, resource_name,
-                                  status, failure_pattern='^.*_FAILED$'):
-        """Waits for a Resource to reach a given status."""
-        fail_regexp = re.compile(failure_pattern)
-        build_timeout = CONF.orchestration.build_timeout
-        build_interval = CONF.orchestration.build_interval
-
-        start = timeutils.utcnow()
-        while timeutils.delta_seconds(start,
-                                      timeutils.utcnow()) < build_timeout:
-            try:
-                res = self.client.resources.get(
-                    stack_identifier, resource_name)
-            except heat_exceptions.HTTPNotFound:
-                # ignore this, as the resource may not have
-                # been created yet
-                pass
-            else:
-                if res.resource_status == status:
-                    return
-                if fail_regexp.search(res.resource_status):
-                    raise exceptions.StackResourceBuildErrorException(
-                        resource_name=res.resource_name,
-                        stack_identifier=stack_identifier,
-                        resource_status=res.resource_status,
-                        resource_status_reason=res.resource_status_reason)
-            time.sleep(build_interval)
-
-        message = ('Resource %s failed to reach %s status within '
-                   'the required time (%s s).' %
-                   (res.resource_name, status, build_timeout))
-        raise exceptions.TimeoutException(message)
-
-    def _wait_for_stack_status(self, stack_identifier, status,
-                               failure_pattern='^.*_FAILED$'):
-        """
-        Waits for a Stack to reach a given status.
-
-        Note this compares the full $action_$status, e.g
-        CREATE_COMPLETE, not just COMPLETE which is exposed
-        via the status property of Stack in heatclient
-        """
-        fail_regexp = re.compile(failure_pattern)
-        build_timeout = CONF.orchestration.build_timeout
-        build_interval = CONF.orchestration.build_interval
-
-        start = timeutils.utcnow()
-        while timeutils.delta_seconds(start,
-                                      timeutils.utcnow()) < build_timeout:
-            try:
-                stack = self.client.stacks.get(stack_identifier)
-            except heat_exceptions.HTTPNotFound:
-                # ignore this, as the stackource may not have
-                # been created yet
-                pass
-            else:
-                if stack.stack_status == status:
-                    return
-                if fail_regexp.search(stack.stack_status):
-                    raise exceptions.StackBuildErrorException(
-                        stack_identifier=stack_identifier,
-                        stack_status=stack.stack_status,
-                        stack_status_reason=stack.stack_status_reason)
-            time.sleep(build_interval)
-
-        message = ('Stack %s failed to reach %s status within '
-                   'the required time (%s s).' %
-                   (stack.stack_name, status, build_timeout))
-        raise exceptions.TimeoutException(message)
-
-    def _stack_delete(self, stack_identifier):
-        try:
-            self.client.stacks.delete(stack_identifier)
-        except heat_exceptions.HTTPNotFound:
-            pass
 
 
 class SwiftScenarioTest(ScenarioTest):
