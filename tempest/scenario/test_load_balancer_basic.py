@@ -215,6 +215,8 @@ class TestLoadBalancerBasic(manager.NetworkScenarioTest):
                 return False
             except IOError:
                 return False
+            except urllib2.HTTPError:
+                return False
         timeout = config.compute.ping_timeout
         start = time.time()
         while not try_connect(check_ip, port):
@@ -297,8 +299,11 @@ class TestLoadBalancerBasic(manager.NetworkScenarioTest):
     def _send_requests(self, vip_ip, servers):
         counters = dict.fromkeys(servers, 0)
         for i in range(self.num):
-            server = urllib2.urlopen("http://{0}/".format(vip_ip)).read()
-            counters[server] += 1
+            try:
+                server = urllib2.urlopen("http://{0}/".format(vip_ip)).read()
+                counters[server] += 1
+            except urllib2.HTTPError:
+                continue
         # Assert that each member of the pool gets balanced at least once
         for member, counter in counters.iteritems():
             self.assertGreater(counter, 0, 'Member %s never balanced' % member)
