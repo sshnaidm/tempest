@@ -125,8 +125,8 @@ class TestLoadBalancerBasic(manager.NetworkScenarioTest):
         keypair = self.create_keypair()
         security_groups = [self.security_group]
         create_kwargs = {
-            'nics': [
-                {'net-id': self.network['id']},
+            'networks': [
+                {'uuid': self.network['id']},
             ],
             'key_name': keypair['name'],
             'security_groups': security_groups,
