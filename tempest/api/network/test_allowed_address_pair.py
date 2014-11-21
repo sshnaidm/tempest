@@ -24,6 +24,7 @@ CONF = config.CONF
 
 class AllowedAddressPairTestJSON(base.BaseNetworkTest):
     _interface = 'json'
+    _ip_version = 4
 
     """
     Tests the Neutron Allowed Address Pair API extension using the Tempest
@@ -99,7 +100,7 @@ class AllowedAddressPairTestJSON(base.BaseNetworkTest):
     @test.attr(type='smoke')
     def test_update_port_with_cidr_address_pair(self):
         # Update allowed address pair with cidr
-        cidr = str(netaddr.IPNetwork(CONF.network.tenant_network_cidr))
+        cidr = str(netaddr.IPNetwork(self.tenant_network_cidr))
         self._update_port_with_address(cidr)
 
     @test.attr(type='smoke')

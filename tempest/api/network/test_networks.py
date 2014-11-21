@@ -68,60 +68,40 @@ class NetworksTestJSON(base.BaseNetworkTest):
         cls.name = cls.network['name']
         cls.subnet = cls.create_subnet(cls.network)
         cls.cidr = cls.subnet['cidr']
-        cls._subnet_data = {6: {'gateway':
-                                str(cls._get_gateway_from_tempest_conf(6)),
-                                'allocation_pools':
-                                cls._get_allocation_pools_from_gateway(6),
-                                'dns_nameservers': ['2001:4860:4860::8844',
-                                                    '2001:4860:4860::8888'],
-                                'host_routes': [{'destination': '2001::/64',
-                                                 'nexthop': '2003::1'}],
-                                'new_host_routes': [{'destination':
-                                                     '2001::/64',
-                                                     'nexthop': '2005::1'}],
-                                'new_dns_nameservers':
-                                ['2001:4860:4860::7744',
-                                 '2001:4860:4860::7888']},
-                            4: {'gateway':
-                                str(cls._get_gateway_from_tempest_conf(4)),
-                                'allocation_pools':
-                                cls._get_allocation_pools_from_gateway(4),
-                                'dns_nameservers': ['8.8.4.4', '8.8.8.8'],
-                                'host_routes': [{'destination': '10.20.0.0/32',
-                                                 'nexthop': '10.100.1.1'}],
-                                'new_host_routes': [{'destination':
+        cls._subnet_data = {'gateway':
+                                str(cls._get_gateway_from_tempest_conf()),
+                            'allocation_pools':
+                                cls._get_allocation_pools_from_gateway(),
+                            'dns_nameservers': ['8.8.4.4', '8.8.8.8'],
+                            'host_routes': [{'destination': '10.20.0.0/32',
+                                             'nexthop': '10.100.1.1'}],
+                            'new_host_routes': [{'destination':
                                                      '10.20.0.0/32',
-                                                     'nexthop':
+                                                 'nexthop':
                                                      '10.100.1.2'}],
-                                'new_dns_nameservers': ['7.8.8.8', '7.8.4.4']}}
+                            'new_dns_nameservers': ['7.8.8.8', '7.8.4.4']}
 
     @classmethod
-    def _get_gateway_from_tempest_conf(cls, ip_version):
+    def _get_gateway_from_tempest_conf(cls):
         """Return first subnet gateway for configured CIDR """
-        if ip_version == 4:
-            cidr = netaddr.IPNetwork(CONF.network.tenant_network_cidr)
-            mask_bits = CONF.network.tenant_network_mask_bits
-        elif ip_version == 6:
-            cidr = netaddr.IPNetwork(CONF.network.tenant_network_v6_cidr)
-            mask_bits = CONF.network.tenant_network_v6_mask_bits
-
-        if mask_bits >= cidr.prefixlen:
+        cidr = netaddr.IPNetwork(cls.tenant_network_cidr)
+        if cls.tenant_network_mask_bits >= cidr.prefixlen:
             return netaddr.IPAddress(cidr) + 1
         else:
-            for subnet in cidr.subnet(mask_bits):
+            for subnet in cidr.subnet(cls.tenant_network_mask_bits):
                 return netaddr.IPAddress(subnet) + 1
 
     @classmethod
-    def _get_allocation_pools_from_gateway(cls, ip_version):
+    def _get_allocation_pools_from_gateway(cls):
         """Return allocation range for subnet of given gateway"""
-        gateway = cls._get_gateway_from_tempest_conf(ip_version)
+        gateway = cls._get_gateway_from_tempest_conf()
         return [{'start': str(gateway + 2), 'end': str(gateway + 3)}]
 
     def subnet_dict(self, include_keys):
         """Return a subnet dict which has include_keys and their corresponding
            value from self._subnet_data
         """
-        return dict((key, self._subnet_data[self._ip_version][key])
+        return dict((key, self._subnet_data[key])
                     for key in include_keys)
 
     def _compare_resource_attrs(self, actual, expected):
@@ -319,13 +299,11 @@ class NetworksTestJSON(base.BaseNetworkTest):
                                          'allocation_pools']))
         subnet_id = subnet['id']
         new_gateway = str(netaddr.IPAddress(
-                          self._subnet_data[self._ip_version]['gateway']) + 1)
+                          self._subnet_data['gateway']) + 1)
         # Verify subnet update
-        new_host_routes = self._subnet_data[self._ip_version][
-            'new_host_routes']
+        new_host_routes = self._subnet_data['new_host_routes']
 
-        new_dns_nameservers = self._subnet_data[self._ip_version][
-            'new_dns_nameservers']
+        new_dns_nameservers = self._subnet_data['new_dns_nameservers']
         kwargs = {'host_routes': new_host_routes,
                   'dns_nameservers': new_dns_nameservers,
                   'gateway_ip': new_gateway, 'enable_dhcp': True}
@@ -442,14 +420,13 @@ class BulkNetworkOpsTestJSON(base.BaseNetworkTest):
     def test_bulk_create_delete_subnet(self):
         networks = [self.create_network(), self.create_network()]
         # Creates 2 subnets in one request
-        cidr = netaddr.IPNetwork(CONF.network.tenant_network_cidr)
-        mask_bits = CONF.network.tenant_network_mask_bits
+        cidr = netaddr.IPNetwork(self.tenant_network_cidr)
+        mask_bits = self.tenant_network_mask_bits
         cidrs = [subnet_cidr for subnet_cidr in cidr.subnet(mask_bits)]
         names = [data_utils.rand_name('subnet-') for i in range(len(networks))]
         subnets_list = []
-        # TODO(raies): "for IPv6, version list [4, 6] will be used.
-        # and cidr for IPv6 will be of IPv6"
-        ip_version = [4, 4]
+        # TODO(sergsh): "for dual-stack, version list [4, 6] will be used.
+        ip_version = [self._ip_version]*len(names)
         for i in range(len(names)):
             p1 = {
                 'network_id': networks[i]['id'],
@@ -499,8 +476,30 @@ class BulkNetworkOpsTestXML(BulkNetworkOpsTestJSON):
     _interface = 'xml'
 
 
+class BulkNetworkOpsIpV6TestJSON(BulkNetworkOpsTestJSON):
+    _ip_version = 6
+
+
 class NetworksIpV6TestJSON(NetworksTestJSON):
     _ip_version = 6
+
+    @classmethod
+    def resource_setup(cls):
+        super(NetworksIpV6TestJSON, cls).resource_setup()
+        cls._subnet_data = {'gateway':
+                                str(cls._get_gateway_from_tempest_conf()),
+                            'allocation_pools':
+                                cls._get_allocation_pools_from_gateway(),
+                            'dns_nameservers': ['2001:4860:4860::8844',
+                                                '2001:4860:4860::8888'],
+                            'host_routes': [{'destination': '2001::/64',
+                                             'nexthop': '2003::1'}],
+                            'new_host_routes': [{'destination':
+                                                     '2001::/64',
+                                                 'nexthop': '2005::1'}],
+                            'new_dns_nameservers':
+                                ['2001:4860:4860::7744',
+                                 '2001:4860:4860::7888']}
 
     @test.attr(type='smoke')
     def test_create_delete_subnet_with_gw(self):
@@ -550,28 +549,29 @@ class NetworksIpV6TestJSON(NetworksTestJSON):
                               test_subnet_ids,
                               'Subnet are not in the same network')
 
-    @testtools.skipUnless(CONF.network_feature_enabled.ipv6_subnet_attributes,
-                          "IPv6 extended attributes for subnets not "
-                          "available")
+
+class NetworksIpV6TestAttrsJSON(NetworksIpV6TestJSON):
+
+    @classmethod
+    def resource_setup(cls):
+        if not CONF.network_feature_enabled.ipv6_subnet_attributes:
+            raise cls.skipException("IPv6 extended attributes for "
+                                    "subnets not available")
+        super(NetworksIpV6TestAttrsJSON, cls).resource_setup()
+
     @test.attr(type='smoke')
     def test_create_delete_subnet_with_v6_attributes_stateful(self):
         self._create_verify_delete_subnet(
-            gateway=self._subnet_data[self._ip_version]['gateway'],
+            gateway=self._subnet_data['gateway'],
             ipv6_ra_mode='dhcpv6-stateful',
             ipv6_address_mode='dhcpv6-stateful')
 
-    @testtools.skipUnless(CONF.network_feature_enabled.ipv6_subnet_attributes,
-                          "IPv6 extended attributes for subnets not "
-                          "available")
     @test.attr(type='smoke')
     def test_create_delete_subnet_with_v6_attributes_slaac(self):
         self._create_verify_delete_subnet(
             ipv6_ra_mode='slaac',
             ipv6_address_mode='slaac')
 
-    @testtools.skipUnless(CONF.network_feature_enabled.ipv6_subnet_attributes,
-                          "IPv6 extended attributes for subnets not "
-                          "available")
     @test.attr(type='smoke')
     def test_create_delete_subnet_with_v6_attributes_stateless(self):
         self._create_verify_delete_subnet(
