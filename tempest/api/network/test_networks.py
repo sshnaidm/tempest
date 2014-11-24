@@ -15,7 +15,6 @@
 import itertools
 
 import netaddr
-import testtools
 
 from tempest.api.network import base
 from tempest.common import custom_matchers
