@@ -550,9 +550,16 @@ class NetworksIpV6TestJSON(NetworksTestJSON):
                               test_subnet_ids,
                               'Subnet are not in the same network')
 
-    @testtools.skipUnless(CONF.network_feature_enabled.ipv6_subnet_attributes,
-                          "IPv6 extended attributes for subnets not "
-                          "available")
+
+class NetworksIpV6TestAttrs(NetworksIpV6TestJSON):
+
+    @classmethod
+    def resource_setup(cls):
+        if not CONF.network_feature_enabled.ipv6_subnet_attributes:
+            raise cls.skipException("IPv6 extended attributes for "
+                                    "subnets not available")
+        super(NetworksIpV6TestAttrs, cls).resource_setup()
+
     @test.attr(type='smoke')
     def test_create_delete_subnet_with_v6_attributes_stateful(self):
         self._create_verify_delete_subnet(
@@ -560,20 +567,36 @@ class NetworksIpV6TestJSON(NetworksTestJSON):
             ipv6_ra_mode='dhcpv6-stateful',
             ipv6_address_mode='dhcpv6-stateful')
 
-    @testtools.skipUnless(CONF.network_feature_enabled.ipv6_subnet_attributes,
-                          "IPv6 extended attributes for subnets not "
-                          "available")
     @test.attr(type='smoke')
     def test_create_delete_subnet_with_v6_attributes_slaac(self):
         self._create_verify_delete_subnet(
             ipv6_ra_mode='slaac',
             ipv6_address_mode='slaac')
 
-    @testtools.skipUnless(CONF.network_feature_enabled.ipv6_subnet_attributes,
-                          "IPv6 extended attributes for subnets not "
-                          "available")
     @test.attr(type='smoke')
     def test_create_delete_subnet_with_v6_attributes_stateless(self):
         self._create_verify_delete_subnet(
             ipv6_ra_mode='dhcpv6-stateless',
             ipv6_address_mode='dhcpv6-stateless')
+
+    @test.attr(type='smoke')
+    def test_delete_subnet_with_slaac_ports(self):
+        """ Create subnet with SLAAC DHCP, create ports in network
+        and then you shall be able to delete subnet without port
+        deletion. But you still can not delete the network.
+        """
+        slaac_network = self.create_network()
+        subnet_slaac = self.create_subnet(slaac_network,
+                                          **{'ipv6_ra_mode': "slaac",
+                                           'ipv6_address_mode': "slaac"})
+        port = self.create_port(slaac_network)
+        self.assertIsNotNone(port['fixed_ips'][0]['ip_address'])
+        self.client.delete_subnet(subnet_slaac['id'])
+        self.subnets.pop()
+        subnets = self.client.list_subnets()
+        self.assertNotIn(subnet_slaac['id'], subnets, "Subnet wasn't deleted")
+        self.assertRaisesRegexp(
+            exceptions.Conflict,
+            "There are one or more ports still in use on the network",
+            self.client.delete_network,
+            slaac_network['id'])
