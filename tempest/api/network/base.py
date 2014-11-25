@@ -69,10 +69,12 @@ class BaseNetworkTest(tempest.test.BaseTestCase):
             raise cls.skipException("IPv6 Tests are disabled.")
         if cls._ip_version == 4:
             cls.tenant_network_cidr = CONF.network.tenant_network_cidr
-            cls.tenant_network_mask_bits = CONF.network.tenant_network_mask_bits
+            cls.tenant_network_mask_bits = (CONF.network.
+                                            tenant_network_mask_bits)
         else:
             cls.tenant_network_cidr = CONF.network.tenant_network_v6_cidr
-            cls.tenant_network_mask_bits = CONF.network.tenant_network_v6_mask_bits
+            cls.tenant_network_mask_bits = (CONF.network.
+                                            tenant_network_v6_mask_bits)
 
         os = cls.get_client_manager()
 
