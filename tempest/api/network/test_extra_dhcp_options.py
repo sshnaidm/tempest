@@ -88,7 +88,7 @@ class ExtraDHCPOptionsTestJSON(base.BaseNetworkTest):
         for retrieved_option in retrieved:
             for option in extra_dhcp_opts:
                 if (retrieved_option['opt_value'] == option['opt_value'] and
-                    retrieved_option['opt_name'] == option['opt_name']):
+                        retrieved_option['opt_name'] == option['opt_name']):
                     break
             else:
                 self.fail('Extra DHCP option not found in port %s' %

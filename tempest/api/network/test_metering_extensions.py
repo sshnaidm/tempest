@@ -44,7 +44,7 @@ class MeteringJSON(base.BaseAdminNetworkTest):
         name = data_utils.rand_name("metering-label")
         cls.metering_label = cls.create_metering_label(name, description)
         cls.remote_ip_prefix = ("10.0.0.0/24" if cls._ip_version == 4
-                            else "fd02::/64")
+                                else "fd02::/64")
         direction = "ingress"
         cls.metering_label_rule = cls.create_metering_label_rule(
             cls.remote_ip_prefix, direction,
