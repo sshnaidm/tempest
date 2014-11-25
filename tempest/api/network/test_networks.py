@@ -26,8 +26,8 @@ from tempest import test
 CONF = config.CONF
 
 
-class NetworksTestJSON(base.BaseNetworkTest):
-    _interface = 'json'
+class NetworksTest(base.BaseNetworkTest):
+    _interface = ''
     _subnet_special = {}
 
     """
@@ -63,7 +63,7 @@ class NetworksTestJSON(base.BaseNetworkTest):
 
     @classmethod
     def resource_setup(cls):
-        super(NetworksTestJSON, cls).resource_setup()
+        super(NetworksTest, cls).resource_setup()
         cls.network = cls.create_network()
         cls.name = cls.network['name']
         cls.subnet = cls.create_subnet(cls.network)
@@ -386,8 +386,8 @@ class NetworksTestJSON(base.BaseNetworkTest):
         self.assertEmpty(subnets, "Public subnets visible")
 
 
-class BulkNetworkOpsTestJSON(base.BaseNetworkTest):
-    _interface = 'json'
+class BulkNetworkOpsTest(base.BaseNetworkTest):
+    _interface = ''
 
     """
     Tests the following operations in the Neutron API using the REST client for
@@ -466,7 +466,7 @@ class BulkNetworkOpsTestJSON(base.BaseNetworkTest):
         for i in range(len(names)):
             p1 = {
                 'network_id': networks[i]['id'],
-                'cidr': str(cidrs[(i)]),
+                'cidr': str(cidrs[i]),
                 'name': names[i],
                 'ip_version': ip_version[i]
             }
@@ -509,16 +509,16 @@ class BulkNetworkOpsTestJSON(base.BaseNetworkTest):
             self.assertIn(n['id'], ports_list)
 
 
-class BulkNetworkOpsIpV6TestJSON(BulkNetworkOpsTestJSON):
+class BulkNetworkOpsIpV6Test(BulkNetworkOpsTest):
     _ip_version = 6
 
 
-class NetworksIpV6TestJSON(NetworksTestJSON):
+class NetworksIpV6Test(NetworksTest):
     _ip_version = 6
 
     @classmethod
     def resource_setup(cls):
-        super(NetworksIpV6TestJSON, cls).resource_setup()
+        super(NetworksIpV6Test, cls).resource_setup()
         cls._subnet_data = {'gateway':
                             str(cls._get_gateway_from_tempest_conf()),
                             'allocation_pools':
@@ -566,7 +566,7 @@ class NetworksIpV6TestJSON(NetworksTestJSON):
                               'Subnet are not in the same network')
 
 
-class NetworksIpV6TestAttrsStateless(NetworksIpV6TestJSON):
+class NetworksIpV6TestAttrsStateless(NetworksIpV6Test):
     _subnet_special = {'ipv6_ra_mode': 'dhcpv6-stateless',
                        'ipv6_address_mode': 'dhcpv6-stateless'}
 
