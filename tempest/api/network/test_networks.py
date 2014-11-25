@@ -31,8 +31,8 @@ class NetworksTestJSON(base.BaseNetworkTest):
     _subnet_special = {}
 
     """
-    Tests the following operations in the Neutron API using the REST client for
-    Neutron:
+    Tests the following operations in the Neutron API using the REST
+    client for Neutron:
 
         create a network for a tenant
         list tenant's networks
@@ -45,7 +45,8 @@ class NetworksTestJSON(base.BaseNetworkTest):
         delete a network also deletes its subnets
         list external networks
 
-        All subnet tests are run once with ipv4 and once with ipv6.
+        All subnet tests are run once with ipv4, once with ipv6,
+        once with each of IPv6 attributes.
 
     v2.0 of the Neutron API is assumed. It is also assumed that the following
     options are defined in the [network] section of etc/tempest.conf:
@@ -53,12 +54,11 @@ class NetworksTestJSON(base.BaseNetworkTest):
         tenant_network_cidr with a block of cidr's from which smaller blocks
         can be allocated for tenant ipv4 subnets
 
-        tenant_network_v6_cidr is the equivalent for ipv6 subnets
+        tenant_network_mask_bits with the mask bits to be used to partition
+        the block defined by tenant_network_cidr
 
-        tenant_network_mask_bits with the mask bits to be used to partition the
-        block defined by tenant_network_cidr
-
-        tenant_network_v6_mask_bits is the equivalent for ipv6 subnets
+        each tenant_network_cidr and tenant_network_mask_bits are defined
+        according to class IP version
     """
 
     @classmethod
@@ -536,6 +536,9 @@ class NetworksIpV6TestJSON(NetworksTestJSON):
 
     @test.attr(type='smoke')
     def test_create_list_subnet_with_no_gw64_one_network(self):
+        """Test creating subnets with IPv4 and IPv6 together
+        in the same network
+        """
         name = data_utils.rand_name('network-')
         network = self.create_network(name)
         ipv6_gateway = self.subnet_dict(['gateway'])['gateway']
@@ -576,7 +579,7 @@ class NetworksIpV6TestAttrsStateless(NetworksIpV6TestJSON):
 
     @test.attr(type='smoke')
     def test_create_delete_subnet_with_dhcp_disabled(self):
-        """Test network and subnet with disabled DHCP """
+        """Test network and subnet with disabled DHCP and IPv6 attributes """
         self.assertRaisesRegexp(
             exceptions.BadRequest,
             "ipv6_ra_mode or ipv6_address_mode cannot be set when "
