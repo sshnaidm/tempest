@@ -17,6 +17,8 @@
 import tempfile
 import time
 import urllib2
+import os
+
 
 from tempest.common import commands
 from tempest import config
@@ -170,9 +172,9 @@ class TestLoadBalancerBasic(manager.NetworkScenarioTest):
                 private_key=private_key)
 
             # Write a backend's response into a file
-            resp = """echo -ne "HTTP/1.1 200 OK\r\nContent-Length: 7\r\n""" \
-                   """Connection: close\r\nContent-Type: text/html; """ \
-                   """charset=UTF-8\r\n\r\n%s"; cat >/dev/null"""
+            resp = ('echo -ne "HTTP/1.1 200 OK\r\nContent-Length: 7\r\n'
+                   'Connection: close\r\nContent-Type: text/html; '
+                   'charset=UTF-8\r\n\r\n%s"; cat >/dev/null')
 
             with tempfile.NamedTemporaryFile() as script:
                 script.write(resp % server_name)
@@ -186,8 +188,7 @@ class TestLoadBalancerBasic(manager.NetworkScenarioTest):
                                                username, key.name)
 
             # Start netcat
-            start_server = """sudo nc -ll -p %(port)s -e sh """ \
-                           """/tmp/%(script)s &"""
+            start_server = 'while true; do sudo nc -ll -p %(port)s -e sh /tmp/%(script)s; done &'
             cmd = start_server % {'port': self.port1,
                                   'script': 'script1'}
             ssh_client.exec_command(cmd)
@@ -204,6 +205,7 @@ class TestLoadBalancerBasic(manager.NetworkScenarioTest):
                                                    username, key.name)
                 cmd = start_server % {'port': self.port2,
                                       'script': 'script2'}
+
                 ssh_client.exec_command(cmd)
 
     def _check_connection(self, check_ip, port=80):
@@ -298,6 +300,7 @@ class TestLoadBalancerBasic(manager.NetworkScenarioTest):
 
     def _send_requests(self, vip_ip, servers):
         counters = dict.fromkeys(servers, 0)
+
         for i in range(self.num):
             try:
                 server = urllib2.urlopen("http://{0}/".format(vip_ip)).read()
