@@ -27,7 +27,7 @@ CONF = config.CONF
 
 
 class NetworksTest(base.BaseNetworkTest):
-    _interface = ''
+    _interface = 'json'
     _subnet_special = {}
 
     """
@@ -110,9 +110,13 @@ class NetworksTest(base.BaseNetworkTest):
                         expected, exclude_keys))
 
     def random_cidr(self):
+        """Calculate random CIDR from given networks in order
+         not to overlap with other tests in case of parallel
+         run or allow_overlap as False in neutron configuration
+         """
         net = netaddr.IPNetwork(self.tenant_network_cidr)
         nets = net.subnet(self.tenant_network_mask_bits)
-        for i in xrange(random.randint(100, 1000)):
+        for _ in xrange(random.randint(1, min(100, net.size))):
             next(nets)
         return str(next(nets))
 
@@ -123,9 +127,11 @@ class NetworksTest(base.BaseNetworkTest):
         gateway = kwargs.pop('gateway', None)
         kwargs.update(self._subnet_special)
         if specify_gateway:
+            # Subnet is created with specified gateway
             subnet = self.create_subnet(network, gateway, cidr, mask_bits,
                                         **kwargs)
         else:
+            # Subnet is created without specifying gateway at all
             _, body = self.client.create_subnet(network_id=net_id,
                                                 cidr=self.random_cidr(),
                                                 ip_version=self._ip_version,
@@ -256,6 +262,7 @@ class NetworksTest(base.BaseNetworkTest):
 
     @test.attr(type='smoke')
     def test_delete_network_with_subnet(self):
+        """Test delete network with subnet """
         # Create a network
         name = data_utils.rand_name('network-')
         _, body = self.client.create_network(name=name)
@@ -387,7 +394,7 @@ class NetworksTest(base.BaseNetworkTest):
 
 
 class BulkNetworkOpsTest(base.BaseNetworkTest):
-    _interface = ''
+    _interface = 'json'
 
     """
     Tests the following operations in the Neutron API using the REST client for

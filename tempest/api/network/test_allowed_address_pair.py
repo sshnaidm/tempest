@@ -24,7 +24,6 @@ CONF = config.CONF
 
 class AllowedAddressPairTestJSON(base.BaseNetworkTest):
     _interface = 'json'
-    _ip_version = 4
 
     """
     Tests the Neutron Allowed Address Pair API extension using the Tempest
