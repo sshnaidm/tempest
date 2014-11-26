@@ -67,6 +67,14 @@ class BaseNetworkTest(tempest.test.BaseTestCase):
                 raise cls.skipException('XML API is not enabled')
         if cls._ip_version == 6 and not CONF.network_feature_enabled.ipv6:
             raise cls.skipException("IPv6 Tests are disabled.")
+        if cls._ip_version == 4:
+            cls.tenant_network_cidr = CONF.network.tenant_network_cidr
+            cls.tenant_network_mask_bits = (CONF.network.
+                                            tenant_network_mask_bits)
+        else:
+            cls.tenant_network_cidr = CONF.network.tenant_network_v6_cidr
+            cls.tenant_network_mask_bits = (CONF.network.
+                                            tenant_network_v6_mask_bits)
 
         os = cls.get_client_manager()
 
@@ -203,7 +211,7 @@ class BaseNetworkTest(tempest.test.BaseTestCase):
             client = cls.client
 
         # The cidr and mask_bits depend on the ip version.
-        ip_version = ip_version if ip_version is not None else cls._ip_version
+        ip_version = ip_version or cls._ip_version
         gateway_not_set = gateway == ''
         if ip_version == 4:
             cidr = cidr or netaddr.IPNetwork(CONF.network.tenant_network_cidr)
@@ -317,7 +325,7 @@ class BaseNetworkTest(tempest.test.BaseTestCase):
     @classmethod
     def create_member(cls, protocol_port, pool, ip_version=None):
         """Wrapper utility that returns a test member."""
-        ip_version = ip_version if ip_version is not None else cls._ip_version
+        ip_version = ip_version or cls._ip_version
         member_address = "fd00::abcd" if ip_version == 6 else "10.0.9.46"
         resp, body = cls.client.create_member(address=member_address,
                                               protocol_port=protocol_port,

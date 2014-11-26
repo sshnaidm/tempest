@@ -273,8 +273,6 @@ class PortsAdminExtendedAttrsTestXML(PortsAdminExtendedAttrsTestJSON):
 
 class PortsIpV6TestJSON(PortsTestJSON):
     _ip_version = 6
-    _tenant_network_cidr = CONF.network.tenant_network_v6_cidr
-    _tenant_network_mask_bits = CONF.network.tenant_network_v6_mask_bits
 
 
 class PortsIpV6TestXML(PortsIpV6TestJSON):
@@ -283,8 +281,6 @@ class PortsIpV6TestXML(PortsIpV6TestJSON):
 
 class PortsAdminExtendedAttrsIpV6TestJSON(PortsAdminExtendedAttrsTestJSON):
     _ip_version = 6
-    _tenant_network_cidr = CONF.network.tenant_network_v6_cidr
-    _tenant_network_mask_bits = CONF.network.tenant_network_v6_mask_bits
 
 
 class PortsAdminExtendedAttrsIpV6TestXML(PortsAdminExtendedAttrsIpV6TestJSON):

@@ -25,7 +25,6 @@ CONF = config.CONF
 
 class SecGroupTest(base.BaseSecGroupTest):
     _interface = 'json'
-    _tenant_network_cidr = CONF.network.tenant_network_cidr
 
     @classmethod
     def resource_setup(cls):
@@ -205,12 +204,30 @@ class SecGroupTest(base.BaseSecGroupTest):
         protocol = 'tcp'
         port_range_min = 76
         port_range_max = 77
-        ip_prefix = self._tenant_network_cidr
+        ip_prefix = self.tenant_network_cidr
         self._create_verify_security_group_rule(sg_id, direction,
                                                 self.ethertype, protocol,
                                                 port_range_min,
                                                 port_range_max,
                                                 remote_ip_prefix=ip_prefix)
+
+    @test.attr(type='smoke')
+    def test_create_security_group_rule_with_protocol_integer_value(self):
+        # Verify creating security group rule with the
+        # protocol as integer value
+        # arguments : "protocol": 17
+        group_create_body, _ = self._create_security_group()
+        direction = 'ingress'
+        protocol = 17
+        security_group_id = group_create_body['security_group']['id']
+        _, rule_create_body = self.client.create_security_group_rule(
+            security_group_id=security_group_id,
+            direction=direction,
+            protocol=protocol
+        )
+        sec_group_rule = rule_create_body['security_group_rule']
+        self.assertEqual(sec_group_rule['direction'], direction)
+        self.assertEqual(int(sec_group_rule['protocol']), protocol)
 
 
 class SecGroupTestXML(SecGroupTest):
@@ -219,7 +236,6 @@ class SecGroupTestXML(SecGroupTest):
 
 class SecGroupIPv6Test(SecGroupTest):
     _ip_version = 6
-    _tenant_network_cidr = CONF.network.tenant_network_v6_cidr
 
     @test.attr(type='smoke')
     def test_create_security_group_rule_with_dufferent_ip_versions(self):

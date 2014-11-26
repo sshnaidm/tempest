@@ -25,7 +25,6 @@ CONF = config.CONF
 
 class NegativeSecGroupTest(base.BaseSecGroupTest):
     _interface = 'json'
-    _tenant_network_cidr = CONF.network.tenant_network_cidr
 
     @classmethod
     def resource_setup(cls):
@@ -99,7 +98,7 @@ class NegativeSecGroupTest(base.BaseSecGroupTest):
         sg2_body, _ = self._create_security_group()
 
         # Create rule specifying both remote_ip_prefix and remote_group_id
-        prefix = self._tenant_network_cidr
+        prefix = self.tenant_network_cidr
         self.assertRaises(
             exceptions.BadRequest, self.client.create_security_group_rule,
             security_group_id=sg1_body['security_group']['id'],
@@ -195,7 +194,6 @@ class NegativeSecGroupTestXML(NegativeSecGroupTest):
 
 class NegativeSecGroupIPv6Test(NegativeSecGroupTest):
     _ip_version = 6
-    _tenant_network_cidr = CONF.network.tenant_network_v6_cidr
 
     @test.attr(type=['negative', 'gate'])
     def test_create_security_group_rule_wrong_ip_prefix_version(self):
