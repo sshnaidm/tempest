@@ -145,10 +145,10 @@ class TestLoadBalancerBasic(manager.NetworkScenarioTest):
             self.floating_ips[floating_ip] = server
             self.server_ips[server['id']] = floating_ip.floating_ip_address
         else:
-            self.server_ips[server['id']] =\
-                server['addresses'][net_name][0]['addr']
-        self.server_fixed_ips[server['id']] =\
-            server['addresses'][net_name][0]['addr']
+            self.server_ips[server['id']] = (server['addresses']
+                                             [net_name][0]['addr'])
+        self.server_fixed_ips[server['id']] = (server['addresses']
+                                               [net_name][0]['addr'])
         self.assertTrue(self.servers_keypairs)
         return server
 
@@ -156,9 +156,8 @@ class TestLoadBalancerBasic(manager.NetworkScenarioTest):
 
         for count in range(1, num + 1):
             name = "server%s" % count
-
             self.servers[name] = self._create_server(name=name)
-        self.assertEqual(len(self.servers_keypairs), 2)
+        self.assertEqual(len(self.servers_keypairs), len(self.servers))
 
     def _start_servers(self):
         """
