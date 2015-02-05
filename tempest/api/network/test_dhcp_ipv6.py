@@ -25,7 +25,6 @@ CONF = config.CONF
 
 
 class NetworksTestDHCPv6(base.BaseNetworkTest):
-    _interface = 'json'
     _ip_version = 6
 
     """ Test DHCPv6 specific features using SLAAC, stateless and
@@ -39,7 +38,7 @@ class NetworksTestDHCPv6(base.BaseNetworkTest):
     """
 
     @classmethod
-    def resource_setup(cls):
+    def skip_checks(cls):
         msg = None
         if not CONF.network_feature_enabled.ipv6:
             msg = "IPv6 is not enabled"
@@ -47,6 +46,9 @@ class NetworksTestDHCPv6(base.BaseNetworkTest):
             msg = "DHCPv6 attributes are not enabled."
         if msg:
             raise cls.skipException(msg)
+
+    @classmethod
+    def resource_setup(cls):
         super(NetworksTestDHCPv6, cls).resource_setup()
         cls.network = cls.create_network()
 
@@ -158,6 +160,33 @@ class NetworksTestDHCPv6(base.BaseNetworkTest):
                              'ipv6_ra_mode=Off and ipv6_address_mode=Off,'
                              'but shall be taken from fixed IPs') % (
                                 real_ip, eui_ip))
+
+    def test_dhcpv6_stateless_two_subnets(self):
+        """When 2 subnets configured with dnsmasq SLAAC and DHCP stateless
+        and there is radvd, port shall receive IP addresses calculated
+        from its MAC and mask of subnet from both subnets.
+        """
+        for ra_mode, add_mode in (
+                ('slaac', 'slaac'),
+                ('dhcpv6-stateless', 'dhcpv6-stateless'),
+        ):
+            kwargs = {'ipv6_ra_mode': ra_mode,
+                      'ipv6_address_mode': add_mode}
+            subnet1 = self.create_subnet(self.network, **kwargs)
+            subnet2 = self.create_subnet(self.network, **kwargs)
+            port_mac = data_utils.rand_mac_address()
+            port = self.create_port(self.network, mac_address=port_mac)
+            real_ips = [i['ip_address'] for i in port['fixed_ips']]
+            eui_ips = [
+                data_utils.get_ipv6_addr_by_EUI64(i['cidr'],
+                                                  port_mac).format()
+                for i in (subnet1, subnet2)
+            ]
+            self._clean_network()
+            self.assertSequenceEqual(sorted(real_ips), sorted(eui_ips),
+                                     ('Real port IPs %s,%s are not equal to'
+                                      ' SLAAC IPs: %s,%s') % tuple(real_ips +
+                                                                   eui_ips))
 
     def test_dhcpv6_two_subnets(self):
         """When one IPv6 subnet configured with dnsmasq SLAAC or DHCP stateless
@@ -325,12 +354,11 @@ class NetworksTestDHCPv6(base.BaseNetworkTest):
                                    subnet["allocation_pools"][0]["end"])
         ip = netaddr.IPAddress(random.randrange(
             ip_range.last + 1, ip_range.last + 10)).format()
-        self.assertRaisesRegexp(exceptions.BadRequest,
-                                "not a valid IP for the defined subnet",
-                                self.create_port,
-                                self.network,
-                                fixed_ips=[{'subnet_id': subnet['id'],
-                                            'ip_address': ip}])
+        self.assertRaises(exceptions.BadRequest,
+                          self.create_port,
+                          self.network,
+                          fixed_ips=[{'subnet_id': subnet['id'],
+                                      'ip_address': ip}])
 
     def test_dhcp_stateful_fixedips_duplicate(self):
         """When port gets IP address from fixed IP range it

@@ -348,7 +348,7 @@ class TestLoadBalancerBasic(manager.NetworkScenarioTest):
         self._create_servers(2)
         self._start_servers()
         self._create_load_balancer('ROUND_ROBIN', 'HTTP', 80)
-        self._check_load_balancing()
+        self._check_tcp_load_balancing(80)
 
     @test.services('compute', 'network')
     def test_load_balancer_least_conn(self):
